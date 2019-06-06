@@ -1,92 +1,85 @@
 # Belly Button Biodiversity
 
-![Bacteria by filterforge.com](Images/bacteria_by_filterforgedotcom.jpg)
+I was tasked with creating an   interactive dashboard to exploring belly button Biodiversity : http://robdunnlab.com/projects/belly-button-biodiversity/   data set. 
+Data set was stored in db folder bellybutton.sqlite 
+I used Python flask app.py: using SQAlchemy flask to connect and display the data 
+I then created used JavaScript located in file folder static / js/ app.js 
+I used Plotly.js and some D3 to create the plots and dropdown menu 
+Create a PIE chart that uses data from your samples route (/samples/<sample>) to display the top 10 samples.
+I Use sample_values as the values for the PIE chart 
+Then otu_ids as the labels for the pie chart
+And otu_labels as the hovertext for the chart
 
-In this assignment, you will build an interactive dashboard to explore the [Belly Button Biodiversity DataSet](http://robdunnlab.com/projects/belly-button-biodiversity/).
+Then used route /metadata/<sample> to display the metadata JSON Object on the page 
 
-## Step 1 - Plotly.js
 
-Use Plotly.js to build interactive charts for your dashboard.
+Display each key/value pair from the metadata JSON object somewhere on the page
 
-* Create a PIE chart that uses data from your samples route (`/samples/<sample>`) to display the top 10 samples.
+then I Deploy  Flask app to Heroku.  https://visual-jurioste4.herokuapp.com/
 
-  * Use `sample_values` as the values for the PIE chart
+#################################################
+# Database Setup
+#################################################
+app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///db/bellybutton.sqlite"
+db = SQLAlchemy(app)
+# reflect an existing database into a new model
+Base = automap_base()
+# reflect the tables
+Base.prepare(db.engine, reflect=True)
+# Save references to each table
+Samples_Metadata = Base.classes.sample_metadata
+Samples = Base.classes.samples
 
-  * Use `otu_ids` as the labels for the pie chart
+#### then set up the routes two of them.
+First one for the index.html to render 
+@app.route("/")
+def index():
+    """Return the homepage."""
+    return render_template("index.html")
+then create a names rout 
+@app.route("/names")
+def names():
+    """Return a list of sample names."""
+   # Use Pandas to perform the sql query
+    
+    stmt = db.session.query(Samples).statement
+    df = pd.read_sql_query(stmt, db.session.bind)
+  
+  # Return a list of the column names (sample names)
+   
+    return jsonify(list(df.columns)[2:])
+creating next app.route 
+@app.route("/metadata/<sample>")
+def sample_metadata(sample):
+    """Return the MetaData for a given sample."""
+    sel = [
+        Samples_Metadata.sample,
+        Samples_Metadata.ETHNICITY,
+        Samples_Metadata.GENDER,
+        Samples_Metadata.AGE,
+        Samples_Metadata.LOCATION,
+        Samples_Metadata.BBTYPE,
+        Samples_Metadata.WFREQ,
+    ]
+    results = db.session.query(*sel).filter(Samples_Metadata.sample == sample).all()
+using the above info for the next route 
+@app.route("/samples/<sample>")
+def samples(sample):
+    """Return `otu_ids`, `otu_labels`,and `sample_values`."""
+    stmt = db.session.query(Samples).statement
+    df = pd.read_sql_query(stmt, db.session.bind)
+ 
+ # Filter the data based on the sample number and
+ 
+   # only keep rows with values above 1
+    
+    sample_data = df.loc[df[sample] > 1, ["otu_id", "otu_label", sample]]
+   # Format the data to send as jsonw
+    
+    data = {
+        "otu_ids": sample_data.otu_id.values.tolist(),
+        "sample_values": sample_data[sample].values.tolist(),
+        "otu_labels": sample_data.otu_label.tolist(),
+    }
+    return jsonify(data)
 
-  * Use `otu_labels` as the hovertext for the chart
-
-  ![PIE Chart](Images/pie_chart.png)
-
-* Create a Bubble Chart that uses data from your samples route (`/samples/<sample>`) to display each sample.
-
-  * Use `otu_ids` for the x values
-
-  * Use `sample_values` for the y values
-
-  * Use `sample_values` for the marker size
-
-  * Use `otu_ids` for the marker colors
-
-  * Use `otu_labels` for the text values
-
-  ![Bubble Chart](Images/bubble_chart.png)
-
-* Display the sample metadata from the route `/metadata/<sample>`
-
-  * Display each key/value pair from the metadata JSON object somewhere on the page
-
-* Update all of the plots any time that a new sample is selected.
-
-* You are welcome to create any layout that you would like for your dashboard. An example dashboard page might look something like the following.
-
-* Your dashboard should be **unique and original**. Place your name in the upper right-hand corner of the window to sign your masterpiece!
-
-![Example Dashboard Page](Images/dashboard_part1.png)
-![Example Dashboard Page](Images/dashboard_part2.png)
-
-## Step 2 - Heroku
-
-Deploy your Flask app to Heroku.
-
-* You can use the provided sqlite file for the database.
-
-* Ask your Instructor and TAs for help!
-
-- - -
-
-## Advanced Challenge Assignment (Optional)
-
-The following task is completely optional and is very advanced.
-
-* Adapt the Gauge Chart from <https://plot.ly/javascript/gauge-charts/> to plot the Weekly Washing Frequency obtained from the route `/wfreq/<sample>`
-
-* You will need to modify the example gauge code to account for values ranging from 0 - 9.
-
-* Update the chart whenever a new sample is selected
-
-![Weekly Washing Frequency Gauge](Images/gauge.png)
-
-- - -
-
-## Flask API
-
-Use Flask API starter code to serve the data needed for your plots.
-
-* Test your routes by visiting each one in the browser.
-
-- - -
-
-## Hints
-
-* Don't forget to `pip install -r requirements.txt` before you start your server.
-
-* Use `console.log` inside of your JavaScript code to see what your data looks like at each step.
-
-* Refer to the [Plotly.js Documentation](https://plot.ly/javascript/) when building the plots.
-
-- - -
-
-### Copyright
-
-Data Boot Camp © 2018. All Rights Reserved.
