@@ -21,65 +21,116 @@ then I Deploy  Flask app to Heroku.  https://visual-jurioste4.herokuapp.com/
 # Database Setup
 #################################################
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///db/bellybutton.sqlite"
+
+
 db = SQLAlchemy(app)
+
 # reflect an existing database into a new model
+
 Base = automap_base()
+
 # reflect the tables
+
 Base.prepare(db.engine, reflect=True)
+
 # Save references to each table
+
 Samples_Metadata = Base.classes.sample_metadata
+
 Samples = Base.classes.samples
 
+
+
 #### then set up the routes two of them.
+
 First one for the index.html to render 
+
 @app.route("/")
+
 def index():
-    """Return the homepage."""
-    return render_template("index.html")
+
+"""Return the homepage."""
+
+return render_template("index.html")
+
 then create a names rout 
+
 @app.route("/names")
+
 def names():
-    """Return a list of sample names."""
-   # Use Pandas to perform the sql query
-    
+
+"""Return a list of sample names."""
+
+# Use Pandas to perform the sql query
+
+
     stmt = db.session.query(Samples).statement
-    df = pd.read_sql_query(stmt, db.session.bind)
-  
+
+df = pd.read_sql_query(stmt, db.session.bind)
+
+
   # Return a list of the column names (sample names)
    
     return jsonify(list(df.columns)[2:])
+
 creating next app.route 
+
 @app.route("/metadata/<sample>")
+
 def sample_metadata(sample):
-    """Return the MetaData for a given sample."""
-    sel = [
-        Samples_Metadata.sample,
-        Samples_Metadata.ETHNICITY,
-        Samples_Metadata.GENDER,
-        Samples_Metadata.AGE,
-        Samples_Metadata.LOCATION,
-        Samples_Metadata.BBTYPE,
-        Samples_Metadata.WFREQ,
-    ]
+
+"""Return the MetaData for a given sample."""
+
+sel = [
+
+Samples_Metadata.sample,
+
+Samples_Metadata.ETHNICITY,
+
+Samples_Metadata.GENDER,
+
+Samples_Metadata.AGE,
+
+Samples_Metadata.LOCATION,
+
+Samples_Metadata.BBTYPE,
+
+Samples_Metadata.WFREQ,
+                    
+                    ]
     results = db.session.query(*sel).filter(Samples_Metadata.sample == sample).all()
+
 using the above info for the next route 
+
+
 @app.route("/samples/<sample>")
+
 def samples(sample):
-    """Return `otu_ids`, `otu_labels`,and `sample_values`."""
-    stmt = db.session.query(Samples).statement
-    df = pd.read_sql_query(stmt, db.session.bind)
+
+"""Return `otu_ids`, `otu_labels`,and `sample_values`."""
+
+stmt = db.session.query(Samples).statement
+
+df = pd.read_sql_query(stmt, db.session.bind)
  
  # Filter the data based on the sample number and
  
    # only keep rows with values above 1
     
-    sample_data = df.loc[df[sample] > 1, ["otu_id", "otu_label", sample]]
-   # Format the data to send as jsonw
+
+sample_data = df.loc[df[sample] > 1, ["otu_id", "otu_label", sample]]
+
+# Format the data to send as jsonw
     
     data = {
-        "otu_ids": sample_data.otu_id.values.tolist(),
-        "sample_values": sample_data[sample].values.tolist(),
-        "otu_labels": sample_data.otu_label.tolist(),
-    }
-    return jsonify(data)
+
+"otu_ids": sample_data.otu_id.values.tolist(),
+
+"sample_values": sample_data[sample].values.tolist(),
+
+"otu_labels": sample_data.otu_label.tolist(),
+
+}
+
+return jsonify(data)
 
