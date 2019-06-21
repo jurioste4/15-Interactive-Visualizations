@@ -1,136 +1,94 @@
-# Belly Button Biodiversity
+![belly button biodiverstiy](image/dashbord.jpg)
 
 I was tasked with creating an   interactive dashboard to exploring belly button Biodiversity : http://robdunnlab.com/projects/belly-button-biodiversity/   data set. 
 Data set was stored in db folder bellybutton.sqlite 
-I used Python flask app.py: using SQAlchemy flask to connect and display the data 
-I then created used JavaScript located in file folder static / js/ app.js 
-I used Plotly.js and some D3 to create the plots and dropdown menu 
-Create a PIE chart that uses data from your samples route (/samples/<sample>) to display the top 10 samples.
-I Use sample_values as the values for the PIE chart 
-Then otu_ids as the labels for the pie chart
-And otu_labels as the hovertext for the chart
+Python flask app.py: using SQAlchemy flask 
 
-Then used route /metadata/<sample> to display the metadata JSON Object on the page 
-
-
-Display each key/value pair from the metadata JSON object somewhere on the page
-
-then I Deploy  Flask app to Heroku.  https://visual-jurioste4.herokuapp.com/
-
-#################################################
-# Database Setup
-#################################################
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///db/bellybutton.sqlite"
-
-
-db = SQLAlchemy(app)
-
-# reflect an existing database into a new model
-
-Base = automap_base()
-
-# reflect the tables
-
-Base.prepare(db.engine, reflect=True)
-
-# Save references to each table
-
-Samples_Metadata = Base.classes.sample_metadata
-
-Samples = Base.classes.samples
-
-
-
-#### then set up the routes two of them.
-
-First one for the index.html to render 
-
+### The python flask app has three routes: first route 
 @app.route("/")
+	def index():
+	    """Return the homepage."""
+	    return render_template("index.html")
+### Is just rendering the index.html
 
-def index():
-
-"""Return the homepage."""
-
-return render_template("index.html")
-
-then create a names rout 
+### The Second  route 
 
 @app.route("/names")
+	def names():
+	    """Return a list of sample names."""
+	
 
-def names():
+	    # Use Pandas to perform the sql query
+	    stmt = db.session.query(Samples).statement
+	    df = pd.read_sql_query(stmt, db.session.bind)
+	
 
-"""Return a list of sample names."""
+	    # Return a list of the column names (sample names)
+	    return jsonify(list(df.columns)[2:])
+	
 
-# Use Pandas to perform the sql query
+### useing pandas to query the data base and display a list of names
 
-
-    stmt = db.session.query(Samples).statement
-
-df = pd.read_sql_query(stmt, db.session.bind)
-
-
-  # Return a list of the column names (sample names)
-   
-    return jsonify(list(df.columns)[2:])
-
-creating next app.route 
-
+### next route : 
 @app.route("/metadata/<sample>")
+	def sample_metadata(sample):
+	    """Return the MetaData for a given sample."""
+	    sel = [
+	        Samples_Metadata.sample,
+	        Samples_Metadata.ETHNICITY,
+	        Samples_Metadata.GENDER,
+	        Samples_Metadata.AGE,
+	        Samples_Metadata.LOCATION,
+	        Samples_Metadata.BBTYPE,
+	        Samples_Metadata.WFREQ,
+	    ]
+	
 
-def sample_metadata(sample):
+	    results = db.session.query(*sel).filter(Samples_Metadata.sample == sample).all()
+### Then with in that query : 
+sample_metadata = {}
+	    for result in results:
+	        sample_metadata["sample"] = result[0]
+	        sample_metadata["ETHNICITY"] = result[1]
+	        sample_metadata["GENDER"] = result[2]
+	        sample_metadata["AGE"] = result[3]
+	        sample_metadata["LOCATION"] = result[4]
+	        sample_metadata["BBTYPE"] = result[5]
+	        sample_metadata["WFREQ"] = result[6]
+	
 
-"""Return the MetaData for a given sample."""
+	    print(sample_metadata)
+	    return jsonify(sample_metadata)
 
-sel = [
-
-Samples_Metadata.sample,
-
-Samples_Metadata.ETHNICITY,
-
-Samples_Metadata.GENDER,
-
-Samples_Metadata.AGE,
-
-Samples_Metadata.LOCATION,
-
-Samples_Metadata.BBTYPE,
-
-Samples_Metadata.WFREQ,
-                    
-                    ]
-    results = db.session.query(*sel).filter(Samples_Metadata.sample == sample).all()
-
-using the above info for the next route 
-
-
+ 
+ ### And last routre : 
 @app.route("/samples/<sample>")
+	def samples(sample):
+	    """Return `otu_ids`, `otu_labels`,and `sample_values`."""
+	    stmt = db.session.query(Samples).statement
+	    df = pd.read_sql_query(stmt, db.session.bind)
+	
 
-def samples(sample):
+	    # Filter the data based on the sample number and
+	    # only keep rows with values above 1
+	    sample_data = df.loc[df[sample] > 1, ["otu_id", "otu_label", sample]]
+	    # Format the data to send as json
+	    data = {
+	        "otu_ids": sample_data.otu_id.values.tolist(),
+	        "sample_values": sample_data[sample].values.tolist(),
+	        "otu_labels": sample_data.otu_label.tolist(),
+	    }
+	    return jsonify(data)
 
-"""Return `otu_ids`, `otu_labels`,and `sample_values`."""
 
-stmt = db.session.query(Samples).statement
 
-df = pd.read_sql_query(stmt, db.session.bind)
- 
- # Filter the data based on the sample number and
- 
-   # only keep rows with values above 1
-    
+I then created used JavaScript located in file folder static / js/ app.js 
 
-sample_data = df.loc[df[sample] > 1, ["otu_id", "otu_label", sample]]
+I used Plotly.js  in file js/app.js 
 
-# Format the data to send as jsonw
-    
-    data = {
+Located in static/js/ app.js I used a file to create two plots taking the metadata routre of info being displayed I used plotly.js to create an interactive Pie chart were you can change the data sample  being used for the chart 
 
-"otu_ids": sample_data.otu_id.values.tolist(),
+![piechart](image/piechart.jpg)
 
-"sample_values": sample_data[sample].values.tolist(),
-
-"otu_labels": sample_data.otu_label.tolist(),
-
-}
-
-return jsonify(data)
-
+# then useing the same sample data set up in the pie chart I created a bubble chart at the bottom of the screen
+![bubble chart](image/bubblechart.jpg)
